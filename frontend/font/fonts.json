@@ -1,0 +1,68 @@
+[
+  {
+    "id": "sf-pro-display-black",
+    "file": "SF-Pro-Display-Black.otf",
+    "family": "SF Pro Display Black",
+    "label": "SF Pro Display Black"
+  },
+  {
+    "id": "sf-pro-display-bold",
+    "file": "SF-Pro-Display-Bold.otf",
+    "family": "SF Pro Display Bold",
+    "label": "SF Pro Display Bold"
+  },
+  {
+    "id": "sf-pro-display-medium",
+    "file": "SF-Pro-Display-Medium.otf",
+    "family": "SF Pro Display Medium",
+    "label": "SF Pro Display Medium"
+  },
+  {
+    "id": "sf-pro-display-regular",
+    "file": "SF-Pro-Display-Regular.otf",
+    "family": "SF Pro Display Regular",
+    "label": "SF Pro Display Regular"
+  },
+  {
+    "id": "sf-pro-display-semibold",
+    "file": "SF-Pro-Display-Semibold.otf",
+    "family": "SF Pro Display Semibold",
+    "label": "SF Pro Display Semibold"
+  },
+  {
+    "id": "sf-pro-display-thin",
+    "file": "SF-Pro-Display-Thin.otf",
+    "family": "SF Pro Display Thin",
+    "label": "SF Pro Display Thin"
+  },
+  {
+    "id": "sf-pro-display-ultralight",
+    "file": "SF-Pro-Display-Ultralight.otf",
+    "family": "SF Pro Display Ultralight",
+    "label": "SF Pro Display Ultralight"
+  },
+  {
+    "id": "digital-7",
+    "file": "digital-7.ttf",
+    "family": "Digital 7",
+    "label": "Digital-7"
+  },
+  {
+    "id": "digital-7-italic",
+    "file": "digital-7-italic.ttf",
+    "family": "Digital 7 Italic",
+    "label": "Digital 7 Italic"
+  },
+  {
+    "id": "digital-7-mono-italic",
+    "file": "digital-7-mono-italic.ttf",
+    "family": "Digital 7 Mono Italic",
+    "label": "Digital 7 Mono Italic"
+  },
+  {
+    "id": "digital-7-mono",
+    "file": "digital-7-mono.ttf",
+    "family": "Digital 7 Mono",
+    "label": "Digital 7 Mono"
+  }
+]

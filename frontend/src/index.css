@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@keyframes countdown-fade {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes countdown-scale {
+  0% {
+    transform: scale(var(--countdown-scale-peak, 1.2));
+  }
+  40% {
+    transform: scale(var(--countdown-scale-peak, 1.2));
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes countdown-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(var(--countdown-slide-offset, 28px));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes flip-clock-flap {
+  0% {
+    transform: rotateX(0deg);
+  }
+  100% {
+    transform: rotateX(-180deg);
+  }
+}

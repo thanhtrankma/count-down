@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://countdown.local/schemas/render-config.json",
+  "title": "RenderConfig",
+  "description": "Configuration for a countdown video render job",
+  "type": "object",
+  "required": [
+    "start_time",
+    "duration_seconds",
+    "resolution",
+    "background_color",
+    "style"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "start_time": {
+      "type": "string",
+      "pattern": "^\\d{2}:\\d{2}:\\d{2}$",
+      "description": "Countdown start label in HH:MM:SS",
+      "examples": ["01:00:00"]
+    },
+    "duration_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 28800,
+      "description": "Video length in seconds (max 8 hours)"
+    },
+    "resolution": {
+      "type": "string",
+      "pattern": "^\\d{3,5}x\\d{3,5}$",
+      "description": "Output resolution as WIDTHxHEIGHT",
+      "examples": ["1920x1080", "1080x1920"]
+    },
+    "background_color": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "description": "Solid background color",
+      "examples": ["#000000"]
+    },
+    "style": {
+      "type": "object",
+      "required": ["font_name", "font_size", "color", "title_font_size"],
+      "additionalProperties": false,
+      "properties": {
+        "font_name": {
+          "type": "string",
+          "minLength": 1,
+          "examples": ["Arial", "Bebas Neue"]
+        },
+        "font_id": {
+          "type": ["string", "null"],
+          "description": "Custom font id from fonts.json manifest"
+        },
+        "font_size": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 500
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#[0-9A-Fa-f]{6}$"
+        },
+        "title_font_size": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 300
+        },
+        "animation": {
+          "type": "string",
+          "enum": ["none", "fade", "scale", "slide_up", "flip", "circle"],
+          "default": "none"
+        },
+        "animation_intensity": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 1.5,
+          "default": 1.0
+        }
+      }
+    },
+    "title": {
+      "type": ["string", "null"],
+      "description": "Optional title shown above the countdown"
+    },
+    "audio_tick": {
+      "type": "boolean",
+      "default": false,
+      "description": "Play a short tick sound at each second boundary"
+    }
+  }
+}
