@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import type { CounterMode } from '../types/config'
+import { displaySecondsAt } from '../utils/counterLabel'
 import { formatTime, tryParseTime } from '../utils/formatTime'
 
 export interface UseCountdownOptions {
   startTime: string
+  counterMode?: CounterMode
   active?: boolean
   loopDuration?: number
   tickMs?: number
@@ -13,11 +16,13 @@ export interface UseCountdownResult {
   display: string
   remainingSeconds: number
   elapsedSeconds: number
+  displaySeconds: number
   reset: () => void
 }
 
 export function useCountdown({
   startTime,
+  counterMode = 'countdown',
   active = true,
   loopDuration,
   tickMs = 1000,
@@ -31,17 +36,19 @@ export function useCountdown({
     parsedStartSeconds ?? lastValidStartSecondsRef.current
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const startTimeRef = useRef(startTime)
+  const counterModeRef = useRef(counterMode)
 
   const reset = useCallback(() => {
     setElapsedSeconds(0)
   }, [])
 
   useEffect(() => {
-    if (startTimeRef.current !== startTime) {
+    if (startTimeRef.current !== startTime || counterModeRef.current !== counterMode) {
       startTimeRef.current = startTime
+      counterModeRef.current = counterMode
       reset()
     }
-  }, [startTime, reset])
+  }, [startTime, counterMode, reset])
 
   useEffect(() => {
     if (!active) {
@@ -61,13 +68,16 @@ export function useCountdown({
     return () => window.clearInterval(intervalId)
   }, [active, loopDuration, tickMs])
 
-  const remainingSeconds = Math.max(0, startSeconds - Math.floor(elapsedSeconds))
-  const display = formatTime(remainingSeconds)
+  const elapsed = Math.floor(elapsedSeconds)
+  const displaySeconds = displaySecondsAt(counterMode, startSeconds, elapsed)
+  const remainingSeconds = Math.max(0, startSeconds - elapsed)
+  const display = formatTime(displaySeconds)
 
   return {
     display,
     remainingSeconds,
     elapsedSeconds,
+    displaySeconds,
     reset,
   }
 }

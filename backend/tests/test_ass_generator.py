@@ -8,7 +8,7 @@ from pydantic import ValidationError
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_DIR))
 
-from app.models.schemas import CountdownAnimation, RenderConfig, RenderStyle
+from app.models.schemas import CountdownAnimation, CounterMode, RenderConfig, RenderStyle
 from app.services.ass_generator import ASSGenerator
 from app.utils.time_format import format_ass_timestamp, format_time, parse_time
 
@@ -90,6 +90,43 @@ def test_countdown_animation_tags_in_dialogue(animation, needle):
     assert needle in content
 
 
+def test_flip_animation_has_panel_backgrounds():
+    config = RenderConfig(
+        start_time="00:01:00",
+        duration_seconds=3,
+        style=RenderStyle(animation=CountdownAnimation.FLIP, animation_intensity=1.0),
+    )
+    generator = ASSGenerator()
+    ass_path = generator.generate(config, output_dir=Path("/tmp/countdown-test-flip-bg"))
+    content = Path(ass_path).read_text(encoding="utf-8-sig")
+
+    assert "\\p1" in content
+    panel_backgrounds = [
+        line for line in content.splitlines()
+        if line.startswith("Dialogue: 0,") and "\\p1" in line
+    ]
+    assert len(panel_backgrounds) >= 9  # 3 panels × 3 seconds
+
+
+def test_flip_second_zero_has_panel_layout():
+    config = RenderConfig(
+        start_time="00:01:00",
+        duration_seconds=3,
+        style=RenderStyle(animation=CountdownAnimation.FLIP),
+    )
+    generator = ASSGenerator()
+    ass_path = generator.generate(config, output_dir=Path("/tmp/countdown-test-flip-s0"))
+    content = Path(ass_path).read_text(encoding="utf-8-sig")
+
+    first_second = [
+        line for line in content.splitlines()
+        if line.startswith("Dialogue:") and ",0:00:00.00," in line and ",Countdown," in line
+    ]
+    assert len(first_second) >= 5  # 3 backgrounds + 2 colons + segment text
+    assert any("\\p1" in line for line in first_second)
+    assert not any("\\frx" in line for line in first_second)
+
+
 def test_circle_animation_adds_vector_and_layered_dialogues():
     config = RenderConfig(
         start_time="00:01:00",
@@ -133,6 +170,45 @@ def test_countdown_labels():
     assert "00:01:00" in content
     assert "00:00:59" in content
     assert "00:00:58" in content
+
+
+def test_countup_labels():
+    config = RenderConfig(
+        start_time="00:00:10",
+        counter_mode=CounterMode.COUNTUP,
+        duration_seconds=5,
+        style=RenderStyle(),
+    )
+    generator = ASSGenerator()
+    ass_path = generator.generate(config, output_dir=Path("/tmp/countdown-test-countup-labels"))
+    content = Path(ass_path).read_text(encoding="utf-8-sig")
+
+    for second in range(5):
+        label = format_time(10 + second)
+        assert label in content
+
+
+def test_countup_flip_prev_label():
+    config = RenderConfig(
+        start_time="00:00:10",
+        counter_mode=CounterMode.COUNTUP,
+        duration_seconds=3,
+        style=RenderStyle(animation=CountdownAnimation.FLIP),
+    )
+    generator = ASSGenerator()
+    ass_path = generator.generate(config, output_dir=Path("/tmp/countdown-test-countup-flip"))
+    content = Path(ass_path).read_text(encoding="utf-8-sig")
+
+    second_one_lines = [
+        line for line in content.splitlines()
+        if line.startswith("Dialogue:") and ",0:00:01.00," in line and ",Countdown," in line
+    ]
+    assert second_one_lines
+    frx_lines = [line for line in second_one_lines if "\\frx" in line]
+    assert len(frx_lines) == 1
+    frx_text = frx_lines[0].split(",,0,0,0,,", 1)[1]
+    assert frx_text.endswith("10")
+    assert "11" in content
 
 
 @pytest.mark.parametrize(

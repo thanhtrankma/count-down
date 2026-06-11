@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 
 import { transitionMs } from '../../utils/animation'
+import {
+  flipPanelHeight,
+  flipPanelWidth,
+  flipRadius,
+  FLIP_HINGE_HEIGHT_RATIO,
+  FLIP_PERSPECTIVE_RATIO,
+} from '../../utils/flipLayout'
 
 interface SplitFlapPanelProps {
   value: string
@@ -35,9 +42,9 @@ export default function SplitFlapPanel({
     return () => window.clearTimeout(timer)
   }, [value, shown, duration])
 
-  const panelWidth = fontSize * 1.65
-  const panelHeight = fontSize * 1.4
-  const radius = fontSize * 0.14
+  const panelWidth = flipPanelWidth(fontSize)
+  const panelHeight = flipPanelHeight(fontSize)
+  const radius = flipRadius(fontSize)
 
   const textStyle = {
     fontFamily,
@@ -63,7 +70,7 @@ export default function SplitFlapPanel({
       style={{
         width: panelWidth,
         height: panelHeight,
-        perspective: `${fontSize * 5}px`,
+        perspective: `${fontSize * FLIP_PERSPECTIVE_RATIO}px`,
       }}
     >
       <div
@@ -124,8 +131,8 @@ export default function SplitFlapPanel({
           style={{
             top: '50%',
             zIndex: 5,
-            height: Math.max(2, fontSize * 0.05),
-            marginTop: -Math.max(1, fontSize * 0.025),
+            height: Math.max(2, fontSize * FLIP_HINGE_HEIGHT_RATIO),
+            marginTop: -Math.max(1, fontSize * FLIP_HINGE_HEIGHT_RATIO * 0.5),
             background: 'rgba(0,0,0,0.75)',
             boxShadow: '0 1px 0 rgba(255,255,255,0.07)',
           }}

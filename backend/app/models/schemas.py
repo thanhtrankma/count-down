@@ -3,12 +3,19 @@ import uuid
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.config import MAX_DURATION_SECONDS
+from app.utils.counter_label import validate_countup_range
+from app.utils.time_format import parse_time
 
 TIME_REGEX = re.compile(r"^(\d{2}):(\d{2}):(\d{2})$")
 RESOLUTION_REGEX = re.compile(r"^(\d{3,5})x(\d{3,5})$")
+
+
+class CounterMode(str, Enum):
+    COUNTDOWN = "countdown"
+    COUNTUP = "countup"
 
 
 class CountdownAnimation(str, Enum):
@@ -41,7 +48,8 @@ class RenderStyle(BaseModel):
 
 
 class RenderConfig(BaseModel):
-    start_time: str = Field(description="Countdown start label in HH:MM:SS")
+    start_time: str = Field(description="Counter label at t=0 in HH:MM:SS")
+    counter_mode: CounterMode = CounterMode.COUNTDOWN
     duration_seconds: int = Field(ge=1, le=MAX_DURATION_SECONDS)
     resolution: str = "1920x1080"
     background_color: str = "#000000"
@@ -77,6 +85,13 @@ class RenderConfig(BaseModel):
             raise ValueError("resolution must be in WIDTHxHEIGHT format")
         return value
 
+    @model_validator(mode="after")
+    def validate_counter_mode_range(self) -> "RenderConfig":
+        if self.counter_mode == CounterMode.COUNTUP:
+            start_seconds = parse_time(self.start_time)
+            validate_countup_range(start_seconds, self.duration_seconds)
+        return self
+
     @property
     def width(self) -> int:
         return int(self.resolution.split("x")[0])
@@ -100,4 +115,5 @@ class RenderJob(BaseModel):
     progress: float = Field(default=0.0, ge=0.0, le=100.0)
     config: RenderConfig
     output_path: Optional[str] = None
+    thumbnail_path: Optional[str] = None
     error: Optional[str] = None

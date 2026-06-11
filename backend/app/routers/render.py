@@ -50,12 +50,41 @@ async def create_render_job(config: RenderConfig) -> CreateJobResponse:
     )
 
 
+class ActiveJobsResponse(BaseModel):
+    jobs: list[RenderJob]
+
+
+@router.get("/api/jobs/active", response_model=ActiveJobsResponse)
+def list_active_jobs() -> ActiveJobsResponse:
+    return ActiveJobsResponse(jobs=job_manager.list_active_jobs())
+
+
 @router.get("/api/jobs/{job_id}", response_model=RenderJob)
 def get_job(job_id: str) -> RenderJob:
     job = job_manager.get_job(job_id)
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
+
+
+@router.get("/api/jobs/{job_id}/thumbnail")
+def download_thumbnail(job_id: str) -> FileResponse:
+    job = job_manager.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status != JobStatus.COMPLETED:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job is not completed (status: {job.status.value})",
+        )
+    if not job.thumbnail_path or not Path(job.thumbnail_path).is_file():
+        raise HTTPException(status_code=404, detail="Thumbnail not found")
+
+    return FileResponse(
+        job.thumbnail_path,
+        media_type="image/jpeg",
+        filename=f"countdown_{job_id}.jpg",
+    )
 
 
 @router.get("/api/jobs/{job_id}/download")

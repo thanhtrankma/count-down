@@ -71,6 +71,18 @@ The backend reads the same directory (`FONTS_DIR`, default `../frontend/font`) a
 curl http://localhost:8000/api/fonts
 ```
 
+## Counter Mode
+
+`counter_mode` controls whether the on-screen label counts down or up. Default is `countdown` (backward compatible). `start_time` is always the label shown at t=0.
+
+| Mode | `start_time` | 60s video labels |
+|------|--------------|------------------|
+| `countdown` | `01:00:00` | `01:00:00` → `00:59:59` → … → `00:59:01` |
+| `countup` | `00:00:00` | `00:00:00` → `00:00:01` → … → `00:00:59` |
+| `countup` | `00:30:00` | `00:30:00` → `00:30:01` → … → `00:30:59` |
+
+Count-up validation: `start_seconds + (duration_seconds - 1)` must not exceed `99:59:59`.
+
 ## Countdown Animations
 
 `RenderStyle.animation` controls per-second transitions (`none`, `fade`, `scale`, `slide_up`, `flip`, `circle`). Default is `none` (backward compatible).
@@ -80,12 +92,12 @@ curl http://localhost:8000/api/fonts
 | `fade` | `@keyframes countdown-fade` opacity 0→1 (~350ms) | `\fad(in,out)` |
 | `scale` | `transform: scale(peak→1)` | `\t` + `\fscx`/`\fscy` |
 | `slide_up` | `translateY(offset→0)` | `\move(x,y1,x,y2)` |
-| `flip` | Split-flap panels (HH \| MM \| SS), top flap `rotateX` fold | `\clip` top/bottom + `\frx` flap layer |
+| `flip` | Split-flap panels (HH \| MM \| SS), per-segment flip | 3 panel backgrounds (`\p1`) + per-panel `\clip` + `\frx` flap |
 | `circle` | SVG `stroke-dashoffset` arc | Vector `\p1` arc on layer 0 + number on layer 1 |
 
-Shared timing uses `animation_intensity` (0.5–1.5): higher = snappier/shorter transitions. Circle progress = `remaining / duration_seconds` (clamped 0–1).
+Shared timing uses `animation_intensity` (0.5–1.5): higher = snappier/shorter transitions. Flip duration is defined in `shared/animation_timing.json` as `max(150, round(350 / intensity))` and used by both preview (`transitionMs`) and ASS (`flip_duration_ms`). Circle progress: countdown = `remaining / duration_seconds`; count-up = `elapsed / (duration_seconds - 1)` (clamped 0–1).
 
-Flip and circle may look slightly different in FFmpeg output vs browser preview due to ASS vector/3D limits.
+Flip parity: video output now mirrors preview layout (3 panels, static colons, segment-diff flips, dark panel chrome). libass `\frx` rotates 0→−90° in one tween (CSS uses `rotateX` 0→−180°), so the fold may look slightly different in FFmpeg output. Panel layout ratios live in `frontend/src/utils/flipLayout.ts` and `compute_flip_layout()` in the backend.
 
 ## API Examples
 
@@ -95,13 +107,14 @@ Flip and circle may look slightly different in FFmpeg output vs browser preview 
 curl http://localhost:8000/api/health
 ```
 
-### Start a 60-second render
+### Start a 60-second countdown render
 
 ```bash
 curl -s -X POST http://localhost:8000/api/render \
   -H 'Content-Type: application/json' \
   -d '{
     "start_time": "00:01:00",
+    "counter_mode": "countdown",
     "duration_seconds": 60,
     "resolution": "1920x1080",
     "background_color": "#000000",
@@ -126,6 +139,26 @@ Response:
 }
 ```
 
+### Start a 30-second count-up render
+
+```bash
+curl -s -X POST http://localhost:8000/api/render \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "start_time": "00:00:00",
+    "counter_mode": "countup",
+    "duration_seconds": 30,
+    "resolution": "1920x1080",
+    "background_color": "#000000",
+    "style": {
+      "font_name": "Arial",
+      "font_size": 120,
+      "color": "#FFFFFF",
+      "title_font_size": 48
+    }
+  }'
+```
+
 ### Poll job status
 
 ```bash
@@ -139,6 +172,18 @@ curl http://localhost:8000/api/jobs/$JOB_ID
 curl -OJ http://localhost:8000/api/jobs/$JOB_ID/download
 ```
 
+### Download thumbnail
+
+Countdown jobs use the first frame (t=0). Count-up jobs use the last frame (final label).
+
+Auto-generated JPEG after each successful render (`backend/output/{job_id}.jpg`).
+
+```bash
+curl -OJ http://localhost:8000/api/jobs/$JOB_ID/thumbnail
+```
+
+Returns `image/jpeg`. If thumbnail extraction failed, the job still completes and this endpoint returns 404.
+
 ### Cancel a running job
 
 ```bash
@@ -151,7 +196,7 @@ curl -X DELETE http://localhost:8000/api/jobs/$JOB_ID
 |-------|-------|
 | Max duration | 8 hours (28,800 seconds) |
 | Concurrent renders | **1** — second request returns HTTP 429 |
-| Output location | `backend/output/{job_id}.mp4` |
+| Output location | `backend/output/{job_id}.mp4` + `{job_id}.jpg` thumbnail |
 | Temp files | `backend/temp/` (ASS, tick audio) |
 | Est. file size | ~0.5 MB per minute (CRF 23, 1080p) |
 | Est. render time | ~6 seconds per minute of video (hardware dependent) |

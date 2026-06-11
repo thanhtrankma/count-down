@@ -1,14 +1,13 @@
 import asyncio
-import re
 import shutil
+import uuid
 from pathlib import Path
 from typing import Awaitable, Callable, Optional
 
-from app.config import FFMPEG_CANDIDATE_PATHS
+from app.config import FFMPEG_CANDIDATE_PATHS, TEMP_DIR
 from app.models.schemas import RenderConfig
+from app.services.ffmpeg_progress import parse_progress_file
 from app.services.font_catalog import fonts_dir_for_render
-
-TIME_PROGRESS_PATTERN = re.compile(r"time=(\d{2}):(\d{2}):(\d{2}\.\d{2})")
 
 
 class FFmpegRunner:
@@ -49,6 +48,7 @@ class FFmpegRunner:
         config: RenderConfig,
         output_path: str,
         tick_audio_path: Optional[str] = None,
+        progress_path: Optional[str] = None,
     ) -> list[str]:
         width = config.width
         height = config.height
@@ -98,19 +98,76 @@ class FFmpegRunner:
                 ]
             )
 
+        if progress_path:
+            command.extend(["-progress", progress_path])
+
         command.append(output_path)
         return command
 
     @staticmethod
-    def _parse_progress(stderr_line: str, total_seconds: float) -> Optional[float]:
-        match = TIME_PROGRESS_PATTERN.search(stderr_line)
-        if not match:
-            return None
-        hours, minutes, seconds = match.groups()
-        elapsed = int(hours) * 3600 + int(minutes) * 60 + float(seconds)
-        if total_seconds <= 0:
-            return 0.0
-        return min(100.0, (elapsed / total_seconds) * 100.0)
+    def _consume_stderr_chunk(
+        chunk: str,
+        carry: str,
+        stderr_lines: list[str],
+    ) -> str:
+        """Append a stderr chunk, splitting on newlines and collapsing \\r progress."""
+        text = carry + chunk
+
+        while "\n" in text:
+            line, text = text.split("\n", 1)
+            line = line.split("\r")[-1]
+            if line.strip():
+                stderr_lines.append(line)
+                if len(stderr_lines) > 50:
+                    del stderr_lines[:-20]
+
+        if "\r" in text:
+            text = text.split("\r")[-1]
+
+        return text
+
+    async def _drain_stderr(self, stderr: asyncio.StreamReader) -> list[str]:
+        stderr_lines: list[str] = []
+        carry = ""
+
+        while True:
+            chunk_bytes = await stderr.read(8192)
+            if not chunk_bytes:
+                if carry.strip():
+                    stderr_lines.append(carry)
+                break
+
+            carry = self._consume_stderr_chunk(
+                chunk_bytes.decode("utf-8", errors="replace"),
+                carry,
+                stderr_lines,
+            )
+
+        return stderr_lines
+
+    async def _poll_progress_file(
+        self,
+        progress_path: Path,
+        total_seconds: float,
+        stop_event: asyncio.Event,
+        on_progress: Optional[Callable[[float], Awaitable[None] | None]] = None,
+    ) -> None:
+        while not stop_event.is_set():
+            try:
+                if progress_path.is_file():
+                    content = progress_path.read_text(encoding="utf-8", errors="replace")
+                    progress = parse_progress_file(content, total_seconds)
+                    if progress is not None and on_progress is not None:
+                        result = on_progress(progress)
+                        if asyncio.iscoroutine(result):
+                            await result
+            except OSError:
+                pass
+
+            try:
+                await asyncio.wait_for(stop_event.wait(), timeout=0.5)
+            except asyncio.TimeoutError:
+                pass
 
     async def run(
         self,
@@ -120,8 +177,16 @@ class FFmpegRunner:
         tick_audio_path: Optional[str] = None,
         on_progress: Optional[Callable[[float], Awaitable[None] | None]] = None,
     ) -> str:
-        command = self.build_command(ass_path, config, output_path, tick_audio_path)
+        progress_path = TEMP_DIR / f"progress_{uuid.uuid4().hex}.txt"
+        command = self.build_command(
+            ass_path,
+            config,
+            output_path,
+            tick_audio_path,
+            progress_path=str(progress_path),
+        )
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
         self._process = await asyncio.create_subprocess_exec(
             *command,
@@ -131,22 +196,25 @@ class FFmpegRunner:
 
         assert self._process.stderr is not None
         total_seconds = float(config.duration_seconds)
-        stderr_lines: list[str] = []
+        stop_event = asyncio.Event()
+        progress_task = asyncio.create_task(
+            self._poll_progress_file(
+                progress_path,
+                total_seconds,
+                stop_event,
+                on_progress,
+            )
+        )
+        stderr_task = asyncio.create_task(self._drain_stderr(self._process.stderr))
 
-        while True:
-            line_bytes = await self._process.stderr.readline()
-            if not line_bytes:
-                break
-            line = line_bytes.decode("utf-8", errors="replace")
-            stderr_lines.append(line)
-            progress = self._parse_progress(line, total_seconds)
-            if progress is not None and on_progress is not None:
-                result = on_progress(progress)
-                if asyncio.iscoroutine(result):
-                    await result
-
-        return_code = await self._process.wait()
-        self._process = None
+        try:
+            return_code = await self._process.wait()
+            stderr_lines = await stderr_task
+        finally:
+            stop_event.set()
+            await progress_task
+            progress_path.unlink(missing_ok=True)
+            self._process = None
 
         if return_code != 0:
             tail = "".join(stderr_lines[-20:]).strip()

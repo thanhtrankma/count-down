@@ -16,8 +16,13 @@
     "start_time": {
       "type": "string",
       "pattern": "^\\d{2}:\\d{2}:\\d{2}$",
-      "description": "Countdown start label in HH:MM:SS",
+      "description": "Counter label at t=0 in HH:MM:SS",
       "examples": ["01:00:00"]
+    },
+    "counter_mode": {
+      "type": "string",
+      "enum": ["countdown", "countup"],
+      "default": "countdown"
     },
     "duration_seconds": {
       "type": "integer",

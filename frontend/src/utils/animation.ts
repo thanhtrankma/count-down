@@ -1,4 +1,5 @@
-import type { CountdownAnimation } from '../types/config'
+import type { CountdownAnimation, CounterMode } from '../types/config'
+import timing from '../../../shared/animation_timing.json'
 
 export const ANIMATION_PRESETS: {
   value: CountdownAnimation
@@ -13,20 +14,36 @@ export const ANIMATION_PRESETS: {
   { value: 'circle', label: 'Circle', icon: '○' },
 ]
 
+const flipTiming = timing.flip
+
 export function clampIntensity(intensity: number): number {
-  return Math.min(1.5, Math.max(0.5, intensity))
+  return Math.min(flipTiming.intensity_max, Math.max(flipTiming.intensity_min, intensity))
 }
 
-/** Base transition ~350ms, scaled by intensity (higher = snappier). */
+/** Base transition from shared/animation_timing.json (higher intensity = snappier). */
 export function transitionMs(intensity: number): number {
-  return Math.max(150, Math.round(350 / clampIntensity(intensity)))
+  return Math.max(
+    flipTiming.min_duration_ms,
+    Math.round(flipTiming.base_duration_ms / clampIntensity(intensity)),
+  )
 }
 
-export function circleProgress(remainingSeconds: number, durationSeconds: number): number {
+export function circleProgress(
+  valueSeconds: number,
+  durationSeconds: number,
+  counterMode: CounterMode = 'countdown',
+): number {
   if (durationSeconds <= 0) {
     return 0
   }
-  const remaining = Math.max(0, remainingSeconds)
+  if (counterMode === 'countup') {
+    if (durationSeconds <= 1) {
+      return 0
+    }
+    const elapsed = Math.max(0, Math.floor(valueSeconds))
+    return Math.max(0, Math.min(1, elapsed / (durationSeconds - 1)))
+  }
+  const remaining = Math.max(0, valueSeconds)
   return Math.max(0, Math.min(1, remaining / durationSeconds))
 }
 

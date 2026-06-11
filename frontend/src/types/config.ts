@@ -1,3 +1,5 @@
+export type CounterMode = 'countdown' | 'countup'
+
 export type CountdownAnimation =
   | 'none'
   | 'fade'
@@ -18,6 +20,7 @@ export interface RenderStyle {
 
 export interface RenderConfig {
   start_time: string
+  counter_mode?: CounterMode
   duration_seconds: number
   resolution: string
   background_color: string
@@ -39,6 +42,7 @@ export interface RenderJob {
   progress: number
   config: RenderConfig
   output_path?: string | null
+  thumbnail_path?: string | null
   error?: string | null
 }
 
@@ -79,6 +83,7 @@ export const DURATION_PRESETS: DurationPreset[] = [
 
 export const DEFAULT_RENDER_CONFIG: RenderConfig = {
   start_time: '01:00:00',
+  counter_mode: 'countdown',
   duration_seconds: 3600,
   resolution: '1920x1080',
   background_color: '#000000',

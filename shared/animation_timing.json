@@ -1,0 +1,8 @@
+{
+  "flip": {
+    "base_duration_ms": 350,
+    "min_duration_ms": 150,
+    "intensity_min": 0.5,
+    "intensity_max": 1.5
+  }
+}

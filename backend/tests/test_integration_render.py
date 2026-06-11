@@ -54,6 +54,7 @@ async def test_render_3600s_integration():
     assert output_path.stat().st_size > 100_000
 
     if job_id:
-        stale = OUTPUT_DIR / f"{job_id}.mp4"
-        if stale.exists():
-            stale.unlink()
+        for ext in (".mp4", ".jpg"):
+            stale = OUTPUT_DIR / f"{job_id}{ext}"
+            if stale.exists():
+                stale.unlink()

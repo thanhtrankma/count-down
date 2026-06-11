@@ -6,9 +6,10 @@ from app.models.schemas import RenderConfig
 from app.services.animation_tags import (
     CountdownAnimation,
     build_circle_dialogue,
-    build_flip_dialogues,
+    build_flip_second_dialogues,
     get_countdown_override_tags,
 )
+from app.utils.counter_label import display_seconds_at, prev_display_seconds_at
 from app.utils.time_format import format_ass_timestamp, format_time, parse_time
 
 HEX_COLOR_PATTERN = re.compile(r"^#([0-9A-Fa-f]{6})$")
@@ -78,11 +79,14 @@ class ASSGenerator:
 
         use_circle = animation == CountdownAnimation.CIRCLE
         use_flip = animation == CountdownAnimation.FLIP
+        counter_mode = config.counter_mode.value
 
         for second in range(config.duration_seconds):
-            remaining = start_seconds - second
-            label = format_time(remaining)
-            prev_label = format_time(remaining + 1) if second > 0 else label
+            current = display_seconds_at(counter_mode, start_seconds, second)
+            label = format_time(current)
+            prev_label = format_time(
+                prev_display_seconds_at(counter_mode, start_seconds, second)
+            )
             start_ts = format_ass_timestamp(second)
             end_ts = format_ass_timestamp(second + 1)
 
@@ -97,20 +101,22 @@ class ASSGenerator:
                     start_seconds=start_seconds,
                     second_index=second,
                     total_seconds=config.duration_seconds,
+                    counter_mode=counter_mode,
                     intensity=intensity,
                 )
                 if circle_line:
                     lines.append(circle_line)
 
-            if use_flip and second > 0:
+            if use_flip:
                 lines.extend(
-                    build_flip_dialogues(
+                    build_flip_second_dialogues(
                         start_ts=start_ts,
                         end_ts=end_ts,
                         label=label,
                         prev_label=prev_label,
                         width=width,
                         height=height,
+                        font_size=style.font_size,
                         intensity=intensity,
                     )
                 )
@@ -132,10 +138,33 @@ class ASSGenerator:
         return "\n".join(lines) + "\n"
 
     def count_dialogue_events(self, config: RenderConfig) -> int:
-        events = config.duration_seconds + (1 if config.title else 0)
+        events = 1 if config.title else 0
+        if config.style.animation == CountdownAnimation.FLIP:
+            start_seconds = parse_time(config.start_time)
+            counter_mode = config.counter_mode.value
+            for second in range(config.duration_seconds):
+                current = display_seconds_at(counter_mode, start_seconds, second)
+                label = format_time(current)
+                prev_label = format_time(
+                    prev_display_seconds_at(counter_mode, start_seconds, second)
+                )
+                start_ts = format_ass_timestamp(second)
+                end_ts = format_ass_timestamp(second + 1)
+                events += len(
+                    build_flip_second_dialogues(
+                        start_ts=start_ts,
+                        end_ts=end_ts,
+                        label=label,
+                        prev_label=prev_label,
+                        width=config.width,
+                        height=config.height,
+                        font_size=config.style.font_size,
+                        intensity=config.style.animation_intensity,
+                    )
+                )
+            return events
+
+        events += config.duration_seconds
         if config.style.animation == CountdownAnimation.CIRCLE:
             events += config.duration_seconds
-        if config.style.animation == CountdownAnimation.FLIP:
-            # Three layers per second after the first (no flip on second 0).
-            events += max(0, config.duration_seconds - 1) * 2
         return events

@@ -28,6 +28,7 @@ function loadPersistedConfig(): RenderConfig {
       },
       title: parsed.title ?? '',
       audio_tick: parsed.audio_tick ?? false,
+      counter_mode: parsed.counter_mode ?? 'countdown',
     }
   } catch {
     return DEFAULT_RENDER_CONFIG

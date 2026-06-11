@@ -1,5 +1,11 @@
 import { Fragment } from 'react'
 
+import {
+  flipColonWidth,
+  flipGap,
+  FLIP_COLON_MARGIN_RATIO,
+  FLIP_COLON_SIZE_RATIO,
+} from '../../utils/flipLayout'
 import type { AnimatedCountdownProps } from './types'
 import SplitFlapPanel from './SplitFlapPanel'
 
@@ -13,7 +19,7 @@ export default function FlipCountdown({
   const segments = display.split(':')
 
   return (
-    <div className="flex items-center" style={{ gap: fontSize * 0.12 }}>
+    <div className="flex items-center" style={{ gap: flipGap(fontSize) }}>
       {segments.map((segment, index) => (
         <Fragment key={index}>
           {index > 0 && (
@@ -22,10 +28,12 @@ export default function FlipCountdown({
               style={{
                 color,
                 fontFamily,
-                fontSize: fontSize * 0.85,
+                fontSize: fontSize * FLIP_COLON_SIZE_RATIO,
                 opacity: 0.9,
                 lineHeight: 1,
-                margin: `0 ${fontSize * 0.04}px`,
+                margin: `0 ${fontSize * FLIP_COLON_MARGIN_RATIO}px`,
+                width: flipColonWidth(fontSize),
+                textAlign: 'center',
               }}
               aria-hidden
             >

@@ -19,8 +19,10 @@ export default function PreviewPlayer({ config }: PreviewPlayerProps) {
     [config.resolution],
   )
 
-  const { display, remainingSeconds } = useCountdown({
+  const counterMode = config.counter_mode ?? 'countdown'
+  const { display, remainingSeconds, elapsedSeconds } = useCountdown({
     startTime: config.start_time,
+    counterMode,
     active: true,
     loopDuration: PREVIEW_LOOP_SECONDS,
   })
@@ -31,7 +33,10 @@ export default function PreviewPlayer({ config }: PreviewPlayerProps) {
   const fontFamily = resolveFontFamily(config.style)
   const animation = config.style.animation ?? 'none'
   const intensity = config.style.animation_intensity ?? 1.0
-  const progress = circleProgress(remainingSeconds, config.duration_seconds)
+  const progress =
+    counterMode === 'countup'
+      ? circleProgress(elapsedSeconds, config.duration_seconds, 'countup')
+      : circleProgress(remainingSeconds, config.duration_seconds, 'countdown')
 
   return (
     <div className="flex h-full flex-col">

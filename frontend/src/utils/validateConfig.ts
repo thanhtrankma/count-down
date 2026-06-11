@@ -1,4 +1,5 @@
 import type { RenderConfig } from '../types/config'
+import { validateCountupRangeFromStartTime } from './counterLabel'
 import { isValidTimeString } from './formatTime'
 
 const HEX_COLOR_PATTERN = /^#[0-9A-Fa-f]{6}$/
@@ -17,6 +18,16 @@ export function validateRenderConfig(config: RenderConfig): ConfigValidationResu
 
   if (!isValidTimeString(config.start_time)) {
     errors.push('Start time must be HH:MM:SS')
+  }
+
+  if ((config.counter_mode ?? 'countdown') === 'countup') {
+    const countupError = validateCountupRangeFromStartTime(
+      config.start_time,
+      config.duration_seconds,
+    )
+    if (countupError) {
+      errors.push(countupError)
+    }
   }
 
   if (

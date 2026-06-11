@@ -11,6 +11,7 @@ import {
   DURATION_PRESETS,
   FORMAT_PRESETS,
   type AspectFormat,
+  type CounterMode,
   type RenderConfig,
 } from '../types/config'
 import { ANIMATION_PRESETS } from '../utils/animation'
@@ -82,8 +83,19 @@ export default function ConfigForm({
     }
   }
 
-  const startTimeError = validation.errors.find((e) => e.includes('Start time'))
+  const counterMode = config.counter_mode ?? 'countdown'
+  const startTimeError = validation.errors.find(
+    (e) => e.includes('Start time') || e.includes('Count up'),
+  )
   const durationError = validation.errors.find((e) => e.includes('Duration'))
+
+  const handleCounterModeChange = (mode: CounterMode) => {
+    const patch: Partial<RenderConfig> = { counter_mode: mode }
+    if (mode === 'countup' && counterMode === 'countdown') {
+      patch.start_time = '00:00:00'
+    }
+    updateConfig(patch)
+  }
   const bgColorError = validation.errors.find((e) => e.includes('Background'))
   const textColorError = validation.errors.find((e) => e.includes('Text color'))
 
@@ -154,6 +166,36 @@ export default function ConfigForm({
       </section>
 
       <section className="space-y-3">
+        <span className="block text-sm font-medium text-gray-300">Counter mode</span>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => handleCounterModeChange('countdown')}
+            className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+              counterMode === 'countdown'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+            }`}
+          >
+            <span className="text-base leading-none">↓</span>
+            <span>Count down</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCounterModeChange('countup')}
+            className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+              counterMode === 'countup'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+            }`}
+          >
+            <span className="text-base leading-none">↑</span>
+            <span>Count up</span>
+          </button>
+        </div>
+      </section>
+
+      <section className="space-y-3">
         <label htmlFor="start-time" className="block text-sm font-medium text-gray-300">
           Start time (HH:MM:SS)
         </label>
@@ -162,7 +204,7 @@ export default function ConfigForm({
           type="text"
           value={config.start_time}
           onChange={(event) => updateConfig({ start_time: event.target.value })}
-          placeholder="01:00:00"
+          placeholder={counterMode === 'countup' ? '00:00:00' : '01:00:00'}
           className={`w-full rounded-lg border bg-gray-900 px-3 py-2 font-mono text-white focus:outline-none focus:ring-1 ${
             startTimeError
               ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
@@ -170,6 +212,11 @@ export default function ConfigForm({
           }`}
         />
         {startTimeError && <p className="text-sm text-red-400">{startTimeError}</p>}
+        <p className="text-xs text-gray-500">
+          {counterMode === 'countup'
+            ? 'Counts up from this time for the video duration'
+            : 'Counts down from this time to 00:00:00'}
+        </p>
       </section>
 
       <section className="space-y-3">
